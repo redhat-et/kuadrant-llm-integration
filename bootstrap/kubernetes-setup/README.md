@@ -28,7 +28,7 @@ If you don't have a Kubernetes cluster, you can set up a local Kind cluster:
 
 ```bash
 # Install Kind (if not already installed)
-curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.20.0/kind-linux-amd64
+curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.29.0/kind-linux-amd64
 chmod +x ./kind
 sudo mv ./kind /usr/local/bin/kind
 
@@ -109,19 +109,13 @@ kubectl apply -f kubernetes/kustomize/base/llm-observability-servicemonitor.yaml
 
 ### vLLM Simulator API
 
-The vLLM simulator is accessible through the Istio Gateway, which provides load balancing across multiple vLLM instances:
+The vLLM simulator is accessible through the Istio Gateway, which provides load balancing across multiple vLLM instances. For other deployments, replace the gateway service with the one that matches your environment:
 
 **For Kind clusters:**
 
 ```bash
-# The API is available at http://localhost:8000 (mapped through Kind)
-```
-
-**For other clusters:**
-
-```bash
 # Forward the ingress gw port
-kubectl port-forward svc/istio-ingressgateway -n istio-system 8000:80
+kubectl -n llm port-forward svc/vllm-gateway-istio 8000:80
 ```
 
 **Test the API:**
@@ -132,7 +126,7 @@ curl -X POST http://localhost:8000/v1/completions \
   -H "Content-Type: application/json" \
   -d '{
     "model": "Qwen/Qwen3-0.6B",
-    "prompt": "Hello, how are you?",
+    "prompt": "Meowdy partner",
     "max_tokens": 50
   }'
 
@@ -147,34 +141,46 @@ curl -X POST http://localhost:8000/v1/chat/completions \
 
 # List available models
 curl http://localhost:8000/v1/models
-
-# Health check
-curl http://localhost:8000/health
 ```
 
-### Prometheus Monitoring
+### Validate Prometheus
 
-Access Prometheus dashboard by port-forwarding:
+Access Prometheus dashboard or curl the endpoint by port-forwarding:
 
 ```bash
 kubectl -n llm-observability port-forward svc/llm-observability 9090:9090
 ```
 
-Then visit `http://localhost:9090` in your browser.
-
-**Useful queries:**
-
-- `up` - Service availability
-- `http_requests_total` - Total HTTP requests
-- `http_request_duration_seconds` - Request duration metrics
-
-### Metrics Endpoint
-
-The vLLM simulator exposes metrics at:
+Then visit `http://localhost:9090` in your browser or curl the metrics endpoint at:
 
 ```bash
 curl http://localhost:8000/metrics
 ```
+
+### Scaling vLLM Instances
+
+To scale your vLLM deployment for load balancing:
+
+```bash
+# Scale to 3 replicas in llm namespace
+kubectl scale deployment vllm-simulator --replicas=3 -n llm
+
+# Check the scaled pods
+kubectl get pods -l app=vllm-simulator -n llm
+
+# View the naive load balancing across your vllm replicas by displaying the pod name with each log line
+kubectl logs -l app=vllm-simulator -n llm -f --prefix
+```
+
+<details>
+<summary>Example output:</summary>
+[pod/vllm-simulator-646cb8db6c-tgwm6/vllm-simulator] I0713 04:02:50.125728       1 simulator.go:310] "completion request received"
+[pod/vllm-simulator-646cb8db6c-t9jvj/vllm-simulator] I0713 04:02:51.369322       1 simulator.go:310] "completion request received"
+[pod/vllm-simulator-646cb8db6c-5bfg9/vllm-simulator] I0713 04:02:52.233316       1 simulator.go:310] "completion request received"
+[pod/vllm-simulator-646cb8db6c-tgwm6/vllm-simulator] I0713 04:02:53.097022       1 simulator.go:310] "completion request received"
+[pod/vllm-simulator-646cb8db6c-5bfg9/vllm-simulator] I0713 04:02:53.918130       1 simulator.go:310] "completion request received"
+[pod/vllm-simulator-646cb8db6c-t9jvj/vllm-simulator] I0713 04:02:54.780033       1 simulator.go:310] "completion request received"
+</details>
 
 ### Customization
 
@@ -252,13 +258,13 @@ kubectl get pods -n istio-system
 
 ```bash
 # vLLM simulator logs
-kubectl logs -l app=vllm-simulator -n llm -f
+kubectl logs -l app=vllm-simulator -n llm 
 
 # Prometheus logs
-kubectl logs -l app.kubernetes.io/instance=llm-observability -n llm-observability -f
+kubectl logs -l app.kubernetes.io/instance=llm-observability -n llm-observability
 
 # Istio logs
-kubectl logs -n istio-system -l app=istiod -f
+kubectl logs -n istio-system -l app=istiod
 ```
 
 ### Check Istio Configuration
@@ -304,12 +310,6 @@ kubectl get endpoints llm-observability -n llm-observability
 ### Network Connectivity
 
 ```bash
-# Test internal service connectivity to vLLM
-kubectl run -i --tty --rm debug --image=curlimages/curl --restart=Never -- curl http://vllm-simulator.llm.svc.cluster.local:8000/health
-
-# Test through Gateway API (from inside cluster)
-kubectl run -i --tty --rm debug --image=curlimages/curl --restart=Never -- curl http://istio-ingressgateway.istio-system/health
-
 # Check Gateway API and HTTPRoute status
 kubectl get gateway vllm-gateway -n llm -o yaml
 kubectl get httproute vllm-httproute -n llm -o yaml
@@ -337,21 +337,6 @@ kubectl get servicemonitor -n llm-observability
 
 ## Load Balancing
 
-### Scaling vLLM Instances
-
-To scale your vLLM deployment for load balancing:
-
-```bash
-# Scale to 3 replicas in llm namespace
-kubectl scale deployment vllm-simulator --replicas=3 -n llm
-
-# Check the scaled pods
-kubectl get pods -l app=vllm-simulator -n llm
-
-# Test load balancing through Gateway API and watch the vllm node logs and see the naive round-robin load balancing.
-kubectl logs -l app=vllm-simulator -n llm -f
-```
-
 ### Traffic Distribution
 
 The Kubernetes Gateway API automatically distributes traffic across all healthy vLLM instances. Traffic routing is handled by:
@@ -359,7 +344,7 @@ The Kubernetes Gateway API automatically distributes traffic across all healthy 
 1. **Gateway (Gateway API)**: Standard Kubernetes Gateway API resource that provides ingress traffic management
 2. **HTTPRoute (Gateway API)**: Official Kubernetes routing resource that ensures traffic flows through the Gateway and picks up Envoy filtering in the datapath
 
-This modern configuration ensures:
+This configuration ensures:
 
 - **Standards-based approach**: Uses official Kubernetes Gateway API instead of vendor-specific resources
 - **Proper load balancing** across vLLM instances

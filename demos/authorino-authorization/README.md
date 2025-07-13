@@ -26,7 +26,7 @@ This demo sets up:
 ### Step 1: Deploy API Key Secrets and AuthPolicy
 
 ```bash
-kubectl apply -f auth-policy.yaml
+kubectl apply -f demos/authorino-authorization/auth-policy.yaml
 ```
 
 ### Step 2: Verify Resources
@@ -48,13 +48,21 @@ kubectl get gateway -n llm
 
 ```bash
 # Forward the Gateway port (keep this running)
-kubectl -n llm port-forward svc/vllm-gateway-istio 8000:80 &
+kubectl -n llm port-forward svc/vllm-gateway-istio 8000:80
 
 # Forward Prometheus for metrics monitoring
 kubectl -n llm-observability port-forward svc/llm-observability 9090:9090 &
 ```
 
 ### Test Valid API Key
+
+Tails the auth logs:
+
+```bash
+kubectl -n kuadrant-system logs deploy/authorino -c authorino -f --tail=100
+```
+
+Post a completion:
 
 ```bash
 # Test with valid API key
@@ -63,12 +71,18 @@ curl -X POST http://localhost:8000/v1/completions \
   -H "Content-Type: application/json" \
   -d '{
     "model": "Qwen/Qwen3-0.6B",
-    "prompt": "Hello, how are you?",
+    "prompt": "Cats or dogs, or both?",
     "max_tokens": 50
   }'
 ```
 
 Expected response: HTTP 200 with completion JSON response
+
+<details>
+<summary>Example Valid Key Output:</summary>
+{"level":"info","ts":"2025-07-13T06:50:33Z","logger":"authorino.service.auth","msg":"incoming authorization request","request id":"3714a8e8-3c58-4790-82b2-f6c859333e8d","object":{"source":{"address":{"Address":{"SocketAddress":{"address":"127.0.0.1:55356","PortSpecifier":{"PortValue":55356}}}}},"destination":{"address":{"Address":{"SocketAddress":{"address":"127.0.0.1:80","PortSpecifier":{"PortValue":80}}}}},"request":{"http":{"id":"3714a8e8-3c58-4790-82b2-f6c859333e8d","method":"POST","path":"/v1/completions","host":"localhost:8000","scheme":"http"}}}}
+{"level":"info","ts":"2025-07-13T06:50:33Z","logger":"authorino.service.auth","msg":"outgoing authorization response","request id":"3714a8e8-3c58-4790-82b2-f6c859333e8d","authorized":true,"response":"OK"}
+</details>
 
 ### Test Invalid API Key
 
@@ -86,6 +100,12 @@ curl -X POST http://localhost:8000/v1/completions \
 
 Expected response: HTTP 401 Unauthorized
 
+<details>
+<summary>Example Invalid Key Output:</summary>
+{"level":"info","ts":"2025-07-13T06:51:52Z","logger":"authorino.service.auth","msg":"incoming authorization request","request id":"8ef94ff4-45cc-4626-b677-c96203490f0d","object":{"source":{"address":{"Address":{"SocketAddress":{"address":"127.0.0.1:55940","PortSpecifier":{"PortValue":55940}}}}},"destination":{"address":{"Address":{"SocketAddress":{"address":"127.0.0.1:80","PortSpecifier":{"PortValue":80}}}}},"request":{"http":{"id":"8ef94ff4-45cc-4626-b677-c96203490f0d","method":"POST","path":"/v1/completions","host":"localhost:8000","scheme":"http"}}}}
+{"level":"info","ts":"2025-07-13T06:51:52Z","logger":"authorino.service.auth","msg":"outgoing authorization response","request id":"8ef94ff4-45cc-4626-b677-c96203490f0d","authorized":false,"response":"UNAUTHENTICATED","object":{"code":16,"message":"the API Key provided is invalid"}}
+</details>
+
 ### Test Without API Key
 
 ```bash
@@ -100,6 +120,12 @@ curl -X POST http://localhost:8000/v1/completions \
 ```
 
 Expected response: HTTP 401 Unauthorized
+
+<details>
+<summary>Example No Key Output:</summary>
+{"level":"info","ts":"2025-07-13T06:51:14Z","logger":"authorino.service.auth","msg":"incoming authorization request","request id":"7633e4f5-a2c2-41dd-8eb9-291e0379325b","object":{"source":{"address":{"Address":{"SocketAddress":{"address":"127.0.0.1:46802","PortSpecifier":{"PortValue":46802}}}}},"destination":{"address":{"Address":{"SocketAddress":{"address":"127.0.0.1:80","PortSpecifier":{"PortValue":80}}}}},"request":{"http":{"id":"7633e4f5-a2c2-41dd-8eb9-291e0379325b","method":"POST","path":"/v1/completions","host":"localhost:8000","scheme":"http"}}}}
+{"level":"info","ts":"2025-07-13T06:51:14Z","logger":"authorino.service.auth","msg":"outgoing authorization response","request id":"7633e4f5-a2c2-41dd-8eb9-291e0379325b","authorized":false,"response":"UNAUTHENTICATED","object":{"code":16,"message":"credential not found"}}
+</details>
 
 ## Monitoring and Metrics
 

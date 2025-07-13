@@ -61,12 +61,6 @@ kubectl get pods -n kuadrant-system
 kubectl get crd | grep kuadrant
 ```
 
-Expected output should show:
-
-- `kuadrant` resource in Ready state
-- All pods in `kuadrant-system` namespace are Running
-- Kuadrant CRDs are installed (AuthPolicy, RateLimitPolicy, etc.)
-
 ## Components Installed
 
 After successful installation, you'll have:
@@ -97,26 +91,14 @@ Once Kuadrant is installed, you can proceed with the demos:
 ### Check Operator Logs
 
 ```bash
-kubectl logs -n kuadrant-system deployment/kuadrant-operator -f
+kubectl logs -n kuadrant-system deployment/kuadrant-operator-controller-manager
 ```
 
 ### Check Component Status
 
 ```bash
-# Authorino
-kubectl get pods -n kuadrant-system -l app.kubernetes.io/name=authorino
-
-# Limitador
-kubectl get pods -n kuadrant-system -l app.kubernetes.io/name=limitador
+kubectl get pods -n kuadrant-system
 ```
-
-### Common Issues
-
-**Issue**: Kuadrant not reaching Ready state
-**Solution**: Check that Gateway API CRDs are installed and the namespace has proper RBAC permissions
-
-**Issue**: Components not starting
-**Solution**: Verify resource quotas and ensure sufficient cluster resources
 
 ## Clean Up
 
