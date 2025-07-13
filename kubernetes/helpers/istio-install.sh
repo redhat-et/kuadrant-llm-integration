@@ -12,8 +12,8 @@
 set -e
 
 MODE=${1:-apply}
-TAG=1.26-alpha.665da00e1e5392c31cf44cd4dedecd354dd660d5
-HUB=gcr.io/istio-testing
+TAG=1.26.2
+HUB=gcr.io/istio-release
 
 echo "Istio installation mode: $MODE"
 echo "Using tag: $TAG"

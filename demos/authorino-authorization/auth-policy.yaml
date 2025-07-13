@@ -4,71 +4,77 @@
 apiVersion: v1
 kind: Secret
 metadata:
-  name: user1-apikey
+  name: premiumuser1-apikey
   namespace: llm
   labels:
     kuadrant.io/auth-secret: "true"
-    app: llm-gateway
+    app: llm-kuadrant
   annotations:
-    secret.kuadrant.io/user-id: user1
+    # premium tier
+    kuadrant.io/groups: premium
+    secret.kuadrant.io/user-id: premiumuser1
 stringData:
-  api_key: valid-api-key-123
+  api_key: premiumuser1_key
 type: Opaque
 ---
 apiVersion: v1
 kind: Secret
 metadata:
-  name: user2-apikey
+  name: free1-apikey
   namespace: llm
   labels:
     kuadrant.io/auth-secret: "true"
-    app: llm-gateway
+    app: llm-kuadrant
   annotations:
-    secret.kuadrant.io/user-id: user2
+    # free tier
+    kuadrant.io/groups: free
+    secret.kuadrant.io/user-id: freeuser1
 stringData:
-  api_key: demo-key-456
+  api_key: freeuser1_key
 type: Opaque
 ---
 apiVersion: v1
 kind: Secret
 metadata:
-  name: user3-apikey
+  name: free2-apikey
   namespace: llm
   labels:
     kuadrant.io/auth-secret: "true"
-    app: llm-gateway
+    app: llm-kuadrant
   annotations:
-    secret.kuadrant.io/user-id: user3
+    kuadrant.io/groups: free
+    secret.kuadrant.io/user-id: freeuser2
 stringData:
-  api_key: test-key-789
+  api_key: freeuser2_key
 type: Opaque
 
 ###############################################################################
-# AUTHPOLICY - API-key authentication on the Gateway
+# 2.  AUTHPOLICY  – API-key auth on the Gateway
 ###############################################################################
 ---
 apiVersion: kuadrant.io/v1
 kind: AuthPolicy
 metadata:
-  name: api-key-auth
+  name: llm-api-keys
   namespace: llm
 spec:
-  targetRef:
+  targetRef:                      # binds to your Istio gateway
     group: gateway.networking.k8s.io
     kind: Gateway
     name: vllm-gateway
+
   rules:
     authentication:
-      api-key-users:
+      api-key-users:               # pick any rule name
         apiKey:
           allNamespaces: true
-          selector:
+          selector:                # match the two secrets above
             matchLabels:
-              app: llm-gateway
+              app: llm-kuadrant
         credentials:
-          authorizationHeader:
+          authorizationHeader:     # header looks like:  Authorization: APIKEY <key>
             prefix: APIKEY
-    response:
+    response:                      # expose the user-id AND groups into the identity object
       success:
         filters:
           identity:
@@ -76,8 +82,50 @@ spec:
               properties:
                 userid:
                   selector: auth.identity.metadata.annotations.secret\.kuadrant\.io/user-id
-    authorization:
-      allow-all:
+                groups:
+                  selector: auth.identity.metadata.annotations.kuadrant\.io/groups
+
+    authorization:                 # (optional) only allow known tiers
+      allow-groups:
         opa:
           rego: |
-            allow { true } 
+            groups := split(object.get(input.auth.identity.metadata.annotations, "kuadrant.io/groups", ""), ",")
+            allow { groups[_] == "free" }
+            allow { groups[_] == "premium" }
+
+###############################################################################
+# 3.  RATELIMITPOLICY  –  2 req/2 min for free, 10 req/2 min for premium
+###############################################################################
+---
+apiVersion: kuadrant.io/v1
+kind: RateLimitPolicy
+metadata:
+  name: basic-rate-limits
+  namespace: llm
+spec:
+  targetRef:
+    group: gateway.networking.k8s.io
+    kind: Gateway
+    name: vllm-gateway
+
+  limits:
+    # ----- FREE TIER: 2 requests / 2 min ------------------------------------ #
+    free-user-requests:
+      rates:
+        - limit: 2
+          window: 2m
+      when:
+        - predicate: |
+            auth.identity.groups.split(",").exists(g, g == "free")
+      counters:
+        - expression: auth.identity.userid
+    # ----- PREMIUM TIER: 10 requests / 2 min --------------------------------- #
+    premium-user-requests:
+      rates:
+        - limit: 10
+          window: 2m
+      when:
+        - predicate: |
+            auth.identity.groups.split(",").exists(g, g == "premium")
+      counters:
+        - expression: auth.identity.userid
