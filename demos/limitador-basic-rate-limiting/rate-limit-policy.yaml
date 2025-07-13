@@ -136,4 +136,4 @@ spec:
         - predicate: |
             auth.identity.groups.split(",").exists(g, g == "premium")
       counters:
-        - expression: auth.identity.userid 
+        - expression: auth.identity.userid

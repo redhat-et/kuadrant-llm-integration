@@ -11,4 +11,4 @@ labels:
     environment: base
     project: vllm-simulator
 
-namespace: llm 
+namespace: llm

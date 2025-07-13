@@ -10,4 +10,4 @@ commonLabels:
 patchesStrategicMerge:
 - vllm-deployment-patch.yaml
 
-namePrefix: dev- 
+namePrefix: dev-
