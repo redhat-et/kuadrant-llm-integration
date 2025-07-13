@@ -30,4 +30,4 @@ spec:
       app: vllm-simulator
   namespaceSelector:
     matchNames:
-    - llm 
+    - llm

@@ -34,4 +34,4 @@ spec:
   selector:
     app.kubernetes.io/name: prometheus
     prometheus: llm-observability
-  sessionAffinity: ClientIP 
+  sessionAffinity: ClientIP

@@ -24,4 +24,4 @@ spec:
         - "--time-to-first-token"
         - "100"
         - "--inter-token-latency"
-        - "50" 
+        - "50"

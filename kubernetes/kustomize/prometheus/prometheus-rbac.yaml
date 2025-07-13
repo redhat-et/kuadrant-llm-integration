@@ -40,4 +40,4 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: llm-observability
-  namespace: default 
+  namespace: default
