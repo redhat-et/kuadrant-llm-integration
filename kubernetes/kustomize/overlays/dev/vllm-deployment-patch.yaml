@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vllm-simulator
+spec:
+  template:
+    spec:
+      containers:
+      - name: vllm-simulator
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+        args:
+        - "--port"
+        - "8000"
+        - "--model"
+        - "Qwen/Qwen3-0.6B"
+        - "--mode"
+        - "echo"
+        - "--time-to-first-token"
+        - "100"
+        - "--inter-token-latency"
+        - "50" 

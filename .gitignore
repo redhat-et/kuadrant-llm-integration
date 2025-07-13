@@ -1,0 +1,8 @@
+# MacOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Misc IDEs
+.idea
+.vscode

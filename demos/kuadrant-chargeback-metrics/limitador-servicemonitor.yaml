@@ -1,0 +1,132 @@
+###############################################################################
+# SERVICEMONITOR - Enhanced Limitador metrics scraping for chargeback
+###############################################################################
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: limitador-enhanced
+  namespace: llm-observability
+  labels:
+    release: prometheus
+    app.kubernetes.io/name: limitador
+    app.kubernetes.io/component: chargeback-metrics
+spec:
+  namespaceSelector:
+    matchNames:
+      - kuadrant-system
+  selector:
+    matchLabels:
+      app: limitador
+  endpoints:
+    - port: http
+      path: /metrics
+      scheme: http
+      interval: 30s
+      scrapeTimeout: 10s
+      metricRelabelings:
+        # Add chargeback labels for better organization
+        - sourceLabels: [__name__]
+          regex: '(authorized_calls_with_user_and_group|limited_calls_with_user_and_group)'
+          targetLabel: chargeback_metric
+          replacement: 'true'
+        # Preserve user and group labels for chargeback analysis
+        - sourceLabels: [user]
+          targetLabel: chargeback_user
+        - sourceLabels: [group]
+          targetLabel: chargeback_group
+
+###############################################################################
+# PROMETHEUSRULE - Enhanced cost and usage tracking rules
+###############################################################################
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: limitador-chargeback-rules
+  namespace: llm-observability
+  labels:
+    release: prometheus
+    app.kubernetes.io/name: limitador
+    app.kubernetes.io/component: chargeback-metrics
+spec:
+  groups:
+    - name: chargeback-costs
+      interval: 30s
+      rules:
+        # Cost per call by tier
+        - record: llm_cost_per_call_usd_by_tier
+          expr: |
+            label_replace(
+              vector(0.001) * on() group_left() (group by (group) ({__name__=~"authorized_calls_with_user_and_group", group="free"})),
+              "tier", "free", "group", "free"
+            )
+            or
+            label_replace(
+              vector(0.002) * on() group_left() (group by (group) ({__name__=~"authorized_calls_with_user_and_group", group="premium"})),
+              "tier", "premium", "group", "premium"
+            )
+            or
+            label_replace(
+              vector(0.005) * on() group_left() (group by (group) ({__name__=~"authorized_calls_with_user_and_group", group="enterprise"})),
+              "tier", "enterprise", "group", "enterprise"
+            )
+
+        # Total authorized calls by user and group
+        - record: llm_authorized_calls_by_user_group
+          expr: |
+            authorized_calls_with_user_and_group{namespace="kuadrant-system"}
+
+        # Total limited calls by user and group
+        - record: llm_limited_calls_by_user_group
+          expr: |
+            limited_calls_with_user_and_group{namespace="kuadrant-system"}
+
+        # Hourly usage by user
+        - record: llm_hourly_usage_by_user
+          expr: |
+            increase(authorized_calls_with_user_and_group[1h])
+
+        # Daily usage by user
+        - record: llm_daily_usage_by_user
+          expr: |
+            increase(authorized_calls_with_user_and_group[24h])
+
+        # Hourly cost by user
+        - record: llm_hourly_cost_by_user_usd
+          expr: |
+            increase(authorized_calls_with_user_and_group{group="free"}[1h]) * 0.001
+            or
+            increase(authorized_calls_with_user_and_group{group="premium"}[1h]) * 0.002
+            or
+            increase(authorized_calls_with_user_and_group{group="enterprise"}[1h]) * 0.005
+
+        # Daily cost by user
+        - record: llm_daily_cost_by_user_usd
+          expr: |
+            increase(authorized_calls_with_user_and_group{group="free"}[24h]) * 0.001
+            or
+            increase(authorized_calls_with_user_and_group{group="premium"}[24h]) * 0.002
+            or
+            increase(authorized_calls_with_user_and_group{group="enterprise"}[24h]) * 0.005
+
+        # Usage by tier
+        - record: llm_usage_by_tier
+          expr: |
+            sum(authorized_calls_with_user_and_group) by (group)
+
+        # Cost by tier
+        - record: llm_cost_by_tier_usd
+          expr: |
+            sum(authorized_calls_with_user_and_group{group="free"}) * 0.001
+            or
+            sum(authorized_calls_with_user_and_group{group="premium"}) * 0.002
+            or
+            sum(authorized_calls_with_user_and_group{group="enterprise"}) * 0.005
+
+        # Rate limiting effectiveness by tier
+        - record: llm_rate_limit_effectiveness_by_tier
+          expr: |
+            (
+              sum(limited_calls_with_user_and_group) by (group) /
+              (sum(authorized_calls_with_user_and_group) by (group) + sum(limited_calls_with_user_and_group) by (group))
+            ) * 100 

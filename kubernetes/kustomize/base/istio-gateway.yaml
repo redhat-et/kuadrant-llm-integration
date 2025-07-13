@@ -1,0 +1,46 @@
+# ----------------------------------------------------------
+# 1. Define the Gateway (using the newer k8s API)
+#    This tells the Istio ingress gateway controller to open a port.
+# ----------------------------------------------------------
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: vllm-gateway
+  namespace: llm
+spec:
+  gatewayClassName: istio
+  listeners:
+  - name: http
+    protocol: HTTP
+    port: 80
+    allowedRoutes:
+      namespaces:
+        from: Same
+---
+# ----------------------------------------------------------
+# 2. Define the HTTPRoute to route traffic from the Gateway
+#    This replaces the old Istio VirtualService.
+# ----------------------------------------------------------
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: vllm-httproute
+  namespace: llm
+spec:
+  # This attaches the route to the Gateway defined above.
+  parentRefs:
+  - name: vllm-gateway
+    namespace: llm
+
+  # By omitting 'hostnames', this route applies to all hostnames
+  # configured on the parent Gateway's listener, which is effectively "*".
+
+  # The routing rules are the same as in your VirtualService.
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /
+    backendRefs:
+    - name: vllm-simulator
+      port: 8000

@@ -1,0 +1,83 @@
+###############################################################################
+# API-KEY SECRETS - Basic authentication keys for demo users
+###############################################################################
+apiVersion: v1
+kind: Secret
+metadata:
+  name: user1-apikey
+  namespace: llm
+  labels:
+    kuadrant.io/auth-secret: "true"
+    app: llm-gateway
+  annotations:
+    secret.kuadrant.io/user-id: user1
+stringData:
+  api_key: valid-api-key-123
+type: Opaque
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: user2-apikey
+  namespace: llm
+  labels:
+    kuadrant.io/auth-secret: "true"
+    app: llm-gateway
+  annotations:
+    secret.kuadrant.io/user-id: user2
+stringData:
+  api_key: demo-key-456
+type: Opaque
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: user3-apikey
+  namespace: llm
+  labels:
+    kuadrant.io/auth-secret: "true"
+    app: llm-gateway
+  annotations:
+    secret.kuadrant.io/user-id: user3
+stringData:
+  api_key: test-key-789
+type: Opaque
+
+###############################################################################
+# AUTHPOLICY - API-key authentication on the Gateway
+###############################################################################
+---
+apiVersion: kuadrant.io/v1
+kind: AuthPolicy
+metadata:
+  name: api-key-auth
+  namespace: llm
+spec:
+  targetRef:
+    group: gateway.networking.k8s.io
+    kind: Gateway
+    name: vllm-gateway
+  rules:
+    authentication:
+      api-key-users:
+        apiKey:
+          allNamespaces: true
+          selector:
+            matchLabels:
+              app: llm-gateway
+        credentials:
+          authorizationHeader:
+            prefix: APIKEY
+    response:
+      success:
+        filters:
+          identity:
+            json:
+              properties:
+                userid:
+                  selector: auth.identity.metadata.annotations.secret\.kuadrant\.io/user-id
+    authorization:
+      allow-all:
+        opa:
+          rego: |
+            allow { true } 
