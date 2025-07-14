@@ -68,9 +68,8 @@ Demonstrates basic API key authentication using Kuadrant's Authorino component.
 - API key-based authentication
 - User identification and tracking
 - Prometheus metrics integration
-- Comprehensive testing and validation
 
-**Potential Use Case:** Getting started with API security and understanding authentication flows.
+**Potential Use Case:** API security for inference gateways.
 
 ### 🚦 Rate Limiting
 
