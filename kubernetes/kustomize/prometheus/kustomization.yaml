@@ -6,6 +6,7 @@ resources:
 - prometheus-deployment.yaml
 - prometheus-rbac.yaml
 - llm-observability-servicemonitor.yaml
+- kuadrant-servicemonitors.yaml
 
 labels:
 - pairs:

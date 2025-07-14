@@ -29,7 +29,7 @@ For detailed architectural information, see the [Kuadrant Architectural Overview
 
 ### 1. Bootstrap Environment
 
-Begin with 🏁 **[Bootstrapping a Kube cluster](./bootstrap/kubernetes-setup/README.md)** to setup the base Kubernetes environment with Gateway API and vLLM.
+Begin with 🏁 **[→ Bootstrapping a Kube cluster](./bootstrap/kubernetes-setup/README.md)** to setup the base Kubernetes environment with Gateway API and vLLM.
 
 **Options:**
 
@@ -41,7 +41,7 @@ Begin with 🏁 **[Bootstrapping a Kube cluster](./bootstrap/kubernetes-setup/RE
 
 Follow the setup guide:
 
-📖 **[Kuadrant Setup Guide](bootstrap/kuadrant-setup/README.md)**
+📖 **[→ Kuadrant Setup Guide](bootstrap/kuadrant-setup/README.md)**
 
 - Lightweight vLLM inference simulation service via the [llm-d](https://github.com/llm-d/llm-d-inference-sim) project.
 
@@ -68,9 +68,8 @@ Demonstrates basic API key authentication using Kuadrant's Authorino component.
 - API key-based authentication
 - User identification and tracking
 - Prometheus metrics integration
-- Comprehensive testing and validation
 
-**Potential Use Case:** Getting started with API security and understanding authentication flows.
+**Potential Use Case:** API security for inference gateways.
 
 ### 🚦 Rate Limiting
 

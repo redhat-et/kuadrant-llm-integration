@@ -59,7 +59,7 @@ kubectl -n llm-observability port-forward svc/llm-observability 9090:9090 &
 Tails the auth logs:
 
 ```bash
-kubectl -n kuadrant-system logs deploy/authorino -c authorino -f --tail=100
+kubectl -n kuadrant-system logs deploy/authorino -f --tail=100
 ```
 
 Post a completion:
@@ -129,54 +129,68 @@ Expected response: HTTP 401 Unauthorized
 
 ## Monitoring and Metrics
 
-### Prometheus Metrics
+### Prometheus Authorino Metrics
 
-Access Prometheus dashboard at `http://localhost:9090` and query:
-
-```promql
-# Total requests to the vLLM service
-rate(istio_requests_total{destination_service_name="vllm-simulator"}[5m])
-
-# Authentication success/failure rates
-rate(istio_requests_total{destination_service_name="vllm-simulator"}[5m]) by (response_code)
-
-# Request latency
-histogram_quantile(0.95, rate(istio_request_duration_milliseconds_bucket{destination_service_name="vllm-simulator"}[5m]))
-```
-
-### Authorino Metrics
-
-Check Authorino-specific metrics:
-
-```promql
-# Authentication requests
-rate(authorino_auth_requests_total[5m])
-
-# Authentication response times
-histogram_quantile(0.95, rate(authorino_auth_request_duration_seconds_bucket[5m]))
-```
-
-### View Authorino Logs
+- Check Authorino-specific metrics by running:
 
 ```bash
-# View Authorino logs for authentication events
-kubectl logs -n kuadrant-system deployment/authorino -f
+curl -G http://localhost:9090/api/v1/query      --data-urlencode 'query=auth_server_authconfig_response_status{namespace="kuadrant-system"}' | jq .
 ```
 
-## Load Testing
+- And you should see something like this:
 
-Generate load to test authentication performance:
+```json
+{
+  "status": "success",
+  "data": {
+    "resultType": "vector",
+    "result": [
+      {
+        "metric": {
+          "__name__": "auth_server_authconfig_response_status",
+          "authconfig": "a80f9d8cc9180652282f35eb7c84a0eb69e2615dd7120cc4b275ef0abbc45416",
+          "endpoint": "http",
+          "exported_namespace": "kuadrant-system",
+          "instance": "10.244.0.16:8080",
+          "job": "authorino-controller-metrics",
+          "namespace": "kuadrant-system",
+          "pod": "authorino-744569f65-c9jt9",
+          "service": "authorino-controller-metrics",
+          "status": "OK"
+        },
+        "value": [
+          1752463372.071,
+          "213"
+        ]
+      },
+      {
+        "metric": {
+          "__name__": "auth_server_authconfig_response_status",
+          "authconfig": "a80f9d8cc9180652282f35eb7c84a0eb69e2615dd7120cc4b275ef0abbc45416",
+          "endpoint": "http",
+          "exported_namespace": "kuadrant-system",
+          "instance": "10.244.0.16:8080",
+          "job": "authorino-controller-metrics",
+          "namespace": "kuadrant-system",
+          "pod": "authorino-744569f65-c9jt9",
+          "service": "authorino-controller-metrics",
+          "status": "UNAUTHENTICATED"
+        },
+        "value": [
+          1752463372.071,
+          "4"
+        ]
+      }
+    ]
+  }
+}
+```
+
+For troubleshooting the scrape target/svcmonitor you can directly hit the Authorino endpoint `server-metrics` with:
 
 ```bash
-# Generate 100 requests with valid API key
-for i in {1..100}; do
-  echo "Request $i"
-  curl -s -o /dev/null -w "%{http_code}\n" \
-    -X POST http://localhost:8000/v1/completions \
-    -H "Authorization: APIKEY valid-api-key-123" \
-    -H "Content-Type: application/json" \
-    -d '{"model":"Qwen/Qwen3-0.6B","prompt":"Test","max_tokens":10}'
-done
+kubectl -n kuadrant-system port-forward svc/authorino-controller-metrics 8080:8080
+curl -s http://localhost:8080/server-metrics
 ```
 
 ## Troubleshooting

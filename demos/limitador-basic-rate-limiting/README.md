@@ -32,7 +32,7 @@ This demo sets up:
 ### Step 1: Deploy API Keys, AuthPolicy, and RateLimitPolicy
 
 ```bash
-kubectl apply -f rate-limit-policy.yaml
+kubectl apply -f demos/limitador-basic-rate-limiting/rate-limit-policy.yaml
 ```
 
 ### Step 2: Verify Resources
@@ -48,7 +48,7 @@ kubectl get authpolicy -n llm
 kubectl get ratelimitpolicy -n llm
 
 # Check Limitador deployment
-kubectl get pods -n kuadrant-system -l app.kubernetes.io/name=limitador
+kubectl get pods -n kuadrant-system -l app=limitador
 ```
 
 ## Testing
@@ -131,37 +131,80 @@ Expected response: HTTP 401 Unauthorized
 
 ## Monitoring and Metrics
 
-### Limitador Admin Interface
+### Limitador Admin/Metrics Interface
 
-Access the Limitador admin interface at `http://localhost:8080`:
+- Access the Limitador admin/metrics interface at `http://localhost:8080`:
 
 ```bash
-# Check active limits
-curl http://localhost:8080/limits/llm%2Fvllm-gateway | jq
-
-# Check current counters
-curl http://localhost:8080/counters/llm%2Fvllm-gateway | jq
+curl http://localhost:8080/metrics
 ```
 
-### Prometheus Metrics
+- Output:
 
-Access Prometheus dashboard at `http://localhost:9090` and query:
+```yaml
+# HELP authorized_calls Authorized calls
+# TYPE authorized_calls counter
+authorized_calls{limitador_namespace="llm/vllm-httproute"} 20
 
-```promql
-# Rate limiting metrics
-rate(limited_calls_total[5m])
+# HELP limited_calls Limited calls
+# TYPE limited_calls counter
+limited_calls{limitador_namespace="llm/vllm-httproute"} 25
 
-# Authorized calls
-rate(authorized_calls_total[5m])
+# HELP datastore_partitioned Limitador is partitioned from backing datastore
+# TYPE datastore_partitioned gauge
+datastore_partitioned 0
 
-# Request success rate
-rate(istio_requests_total{destination_service_name="vllm-simulator",response_code="200"}[5m])
-
-# Request error rate (429 - rate limited)
-rate(istio_requests_total{destination_service_name="vllm-simulator",response_code="429"}[5m])
+# HELP limitador_up Limitador is running
+# TYPE limitador_up gauge
+limitador_up 1
 ```
 
-### Limitador Metrics
+When you attach a RateLimitPolicy to a Gateway, Kuadrant doesn’t hand that policy to Limitador in one big chunk.
+Instead, it walks through every HTTPRoute the Gateway serves (hosts, paths, allowedRoutes, etc.) and produces a separate rule-set for each route.
+Each of those rule-sets is written into the ConfigMap that Limitador mounts, and each one is given a namespace of `<kube-namespace>/<httpRoute-name>`.
+
+- Check the limitador active limits.
+
+```bash
+curl -s http://localhost:8080/limits/llm%2Fvllm-httproute | jq .
+```
+
+- Output:
+
+```json
+[
+  {
+    "id": null,
+    "namespace": "llm/vllm-httproute",
+    "max_value": 2,
+    "seconds": 120,
+    "name": null,
+    "conditions": [
+      "descriptors[0][\"limit.free_user_requests__323789ab\"] == \"1\""
+    ],
+    "variables": [
+      "descriptors[0][\"auth.identity.userid\"]"
+    ]
+  },
+  {
+    "id": null,
+    "namespace": "llm/vllm-httproute",
+    "max_value": 10,
+    "seconds": 120,
+    "name": null,
+    "conditions": [
+      "descriptors[0][\"limit.premium_user_requests__465980c1\"] == \"1\""
+    ],
+    "variables": [
+      "descriptors[0][\"auth.identity.userid\"]"
+    ]
+  }
+]
+```
+
+### Limitador Prometheus Metrics
+
+TODO: setup limitador prometheus rules
 
 Check Limitador-specific metrics:
 
