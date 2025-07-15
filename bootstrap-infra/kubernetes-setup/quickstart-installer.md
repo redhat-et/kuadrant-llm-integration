@@ -3,9 +3,9 @@
 This repo ships a single helper script that stands up (or tears down) a whole demo stack:
 
 * **Istio** + Gateway API
-* **vLLM simulator** (OpenAI‑compatible endpoints)
+* **vLLM simulator** (vLLM endpoints and metrics)
 * **Prometheus** monitoring
-* *(Optional)* a **Kind** cluster so you don’t need a real Kubernetes
+* *(Optional)* a **Kind** cluster
 
 The script is idempotent: run it again and only missing pieces are applied.
 

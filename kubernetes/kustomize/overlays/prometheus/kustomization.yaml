@@ -7,6 +7,9 @@ resources:
 - ../../prometheus
 - namespace.yaml
 
+configurations:
+  - kustomizeconfig.yaml
+
 labels:
 - pairs:
     environment: default
