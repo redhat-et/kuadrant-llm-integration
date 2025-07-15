@@ -5,13 +5,44 @@ by leveraging [llm-d/llm-d-inference-sim](https://github.com/llm-d/llm-d-inferen
 
 This can be deployed on any Kubernetes cluster or Kind since no accelerator is required.
 
+## 🚀 **Quick Start with Automated Script**
+
+**For the easiest installation, use the automated quickstart script:**
+
+```bash
+# Install everything with default namespaces (llm, llm-observability)
+./quickstart-install-infra.sh --kind
+
+# Install with custom namespaces
+./quickstart-install-infra.sh -n myapp -o myapp-monitoring
+
+# See all options
+./quickstart-install-infra.sh --help
+```
+
+The quickstart script automatically handles:
+- Kind cluster creation (optional)
+- Istio installation with Gateway API
+- Prometheus Operator deployment
+- vLLM simulator deployment
+- Kuadrant installation
+- Namespace management using Kustomize overlays
+
+**Continue reading below for manual deployment instructions.**
+
 ## Base Architecture
 
-- **vLLM Simulator**: A lightweight simulator that provides OpenAI-compatible API endpoints (deployed in `llm` namespace)
-- **Kubernetes Gateway API**: Standard Gateway resource that provides external access and load balancing between vLLM instances (deployed in `llm` namespace)
-- **HTTPRoute**: Kubernetes Gateway API resource that ensures traffic routes through the Gateway and picks up Envoy filtering in the datapath (deployed in `llm` namespace)
-- **Prometheus**: Monitors and scrapes metrics from all services using Prometheus Operator (deployed in `llm-observability` namespace)
-- **Kustomize**: Provides overlay configuration for different environments
+- **vLLM Simulator**: A lightweight simulator that provides OpenAI-compatible API endpoints (deployed in `llm` namespace by default)
+- **Kubernetes Gateway API**: Standard Gateway resource that provides external access and load balancing between vLLM instances (deployed in `llm` namespace by default)
+- **HTTPRoute**: Kubernetes Gateway API resource that ensures traffic routes through the Gateway and picks up Envoy filtering in the datapath (deployed in `llm` namespace by default)
+- **Prometheus**: Monitors and scrapes metrics from all services using Prometheus Operator (deployed in `llm-observability` namespace by default)
+- **Kustomize**: Provides overlay configuration for different environments and namespace customization
+
+**Default Namespaces:**
+- `llm`: vLLM simulator, Gateway API resources, and application components
+- `llm-observability`: Prometheus monitoring stack and observability components
+
+**Note**: The quickstart script can deploy to custom namespaces using the `-n` and `-o` options.
 
 ## Prerequisites
 
@@ -19,6 +50,7 @@ This can be deployed on any Kubernetes cluster or Kind since no accelerator is r
 - Helm v3.0+ (for Istio installation)
 - `kubectl` configured to access your cluster
 - `kustomize` (optional, kubectl has built-in kustomize support)
+- `kind` (optional, for local development - automatically installed by quickstart script)
 
 ## Installation
 
@@ -56,24 +88,43 @@ EOF
 
 ## Quick Start
 
-Deploy the entire stack using Kustomize:
+### Option 1: Automated Installation (Recommended)
+
+```bash
+# Clone the repo
+git clone https://github.com/redhat-et/kuadrant-llm-integration
+cd kuadrant-llm-integration
+
+# Install everything with default namespaces (llm, llm-observability)
+./quickstart-install-infra.sh --kind
+
+# Or install with custom namespaces
+./quickstart-install-infra.sh -n myapp -o myapp-monitoring
+```
+
+### Option 2: Manual Installation with Kustomize Overlays
+
+Deploy the entire stack using Kustomize overlays:
 
 ```bash
 # 0. Clone the repo
 git clone https://github.com/redhat-et/kuadrant-llm-integration
 cd kuadrant-llm-integration
 
-# 1. Install Istio (creates llm and llm-observability namespaces and enables injection)
+# 1. Install Istio (creates llm and llm-observability namespaces by default)
+# Set environment variables for custom namespaces (optional)
+export VLLM_NAMESPACE=llm
+export OBSERVABILITY_NAMESPACE=llm-observability
 ./kubernetes/helpers/istio-install.sh apply
 
 # 2. Install Prometheus Operator CRDs
 kubectl apply --server-side --field-manager=my-field-manager -f https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/master/bundle.yaml
 
-# 3. Deploy vLLM components to llm namespace
-kubectl apply -k kubernetes/kustomize/base
+# 3. Deploy vLLM components using default overlay
+kubectl apply -k kubernetes/kustomize/overlays/default
 
-# 4. Deploy Prometheus components to llm-observability namespace
-kubectl apply -k kubernetes/kustomize/prometheus
+# 4. Deploy Prometheus components using prometheus overlay
+kubectl apply -k kubernetes/kustomize/overlays/prometheus
 
 # 5. Wait for pods to be ready
 kubectl wait --for=condition=ready pod -l app=vllm-simulator -n llm --timeout=300s
@@ -88,22 +139,27 @@ If you prefer to deploy components individually:
 
 ```bash
 # Install prerequisites
+# Set environment variables for custom namespaces (optional)
+export VLLM_NAMESPACE=llm
+export OBSERVABILITY_NAMESPACE=llm-observability
 ./kubernetes/helpers/istio-install.sh apply
 kubectl apply --server-side --field-manager=my-field-manager -f https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/master/bundle.yaml
 
-# Deploy vLLM simulator (llm namespace)
-kubectl apply -f kubernetes/kustomize/base/vllm-deployment.yaml
-kubectl apply -f kubernetes/kustomize/base/vllm-service.yaml
+# Deploy vLLM simulator using base resources (will be deployed to default namespace, requires manual namespace management)
+kubectl apply -f kubernetes/kustomize/base/vllm-deployment.yaml -n llm
+kubectl apply -f kubernetes/kustomize/base/vllm-service.yaml -n llm
 
-# Deploy Gateway API resources (llm namespace)
-kubectl apply -f kubernetes/kustomize/base/istio-gateway.yaml
+# Deploy Gateway API resources
+kubectl apply -f kubernetes/kustomize/base/istio-gateway.yaml -n llm
 
 # Deploy Prometheus (llm-observability namespace)
-kubectl apply -f kubernetes/kustomize/base/prometheus-rbac.yaml
-kubectl apply -f kubernetes/kustomize/base/prometheus-config.yaml
-kubectl apply -f kubernetes/kustomize/base/prometheus-deployment.yaml
-kubectl apply -f kubernetes/kustomize/base/llm-observability-servicemonitor.yaml
+kubectl apply -f kubernetes/kustomize/prometheus/prometheus-rbac.yaml -n llm-observability
+kubectl apply -f kubernetes/kustomize/prometheus/prometheus-config.yaml -n llm-observability
+kubectl apply -f kubernetes/kustomize/prometheus/prometheus-deployment.yaml -n llm-observability
+kubectl apply -f kubernetes/kustomize/prometheus/llm-observability-servicemonitor.yaml -n llm-observability
 ```
+
+**Note**: Manual deployment requires explicit namespace management. Consider using the overlays approach or the quickstart script for easier namespace handling.
 
 ## Accessing the Services
 
@@ -186,26 +242,56 @@ kubectl logs -l app=vllm-simulator -n llm -f --prefix
 
 To customize the deployment:
 
-1. **Base Configuration**: Edit files in `kubernetes/manifests/`
-2. **Environment-specific**: Create new overlays in `kubernetes/kustomize/overlays/`
-3. **Resource Limits**: Adjust CPU/memory limits in deployment manifests
+1. **Base Configuration**: Edit files in `kubernetes/kustomize/base/` and `kubernetes/kustomize/prometheus/`
+2. **Environment-specific**: Create new overlays in `kubernetes/kustomize/overlays/` or use the quickstart script with custom namespaces
+3. **Resource Limits**: Adjust CPU/memory limits in deployment manifests or create overlay patches
+4. **Namespace Configuration**: Use the quickstart script's `-n` and `-o` options, or create custom overlays with different `namespace:` values
 
 ### Creating a New Environment
+
+#### Option 1: Using the Quickstart Script (Recommended)
+
+```bash
+# Deploy to custom namespaces
+./quickstart-install-infra.sh -n prod-llm -o prod-monitoring
+
+# Deploy to existing cluster (no Kind)
+./quickstart-install-infra.sh -n prod-llm -o prod-monitoring
+```
+
+#### Option 2: Creating Custom Overlays
 
 ```bash
 # Create new overlay directory
 mkdir -p kubernetes/kustomize/overlays/prod
+
+# Create namespace definition
+cat > kubernetes/kustomize/overlays/prod/namespace.yaml <<EOF
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: prod-llm
+  labels:
+    name: prod-llm
+    environment: prod
+    project: vllm-simulator
+EOF
 
 # Create kustomization.yaml
 cat > kubernetes/kustomize/overlays/prod/kustomization.yaml <<EOF
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
+namespace: prod-llm
+
 resources:
 - ../../base
+- namespace.yaml
 
-commonLabels:
-  environment: prod
+labels:
+- pairs:
+    environment: prod
+    project: vllm-simulator
 
 namePrefix: prod-
 
@@ -280,7 +366,7 @@ kubectl get httproute -n llm
 kubectl get gatewayclasses
 kubectl get gateways.gateway.networking.k8s.io -n llm
 
-# Check if Istio injection is enabled
+# Check if Istio injection is enabled (note: not required for Gateway API)
 kubectl get namespace default -o yaml | grep istio-injection
 kubectl get namespace llm -o yaml | grep istio-injection
 kubectl get namespace llm-observability -o yaml | grep istio-injection
@@ -328,7 +414,7 @@ kubectl describe httproute vllm-httproute -n llm
 
 ```bash
 # Check if Prometheus Operator is installed (cluster-wide)
-kubectl get pods -n default -l app.kubernetes.io/name=prometheus-operator
+kubectl get pods -A -l app.kubernetes.io/name=prometheus-operator
 
 # Check Prometheus CRDs
 kubectl get prometheus -n llm-observability
@@ -370,30 +456,48 @@ You can configure advanced traffic policies by modifying the HTTPRoute in `kuber
 ### Testing
 
 ```bash
-# Apply dev overlay
+# Apply dev overlay (uses llm-dev namespace)
 kubectl apply -k kubernetes/kustomize/overlays/dev
 
-# Test the endpoints
+# Test the endpoints (assuming port-forwarding is set up)
 curl -X POST http://localhost:8000/v1/completions \
   -H "Content-Type: application/json" \
   -d '{"model": "gpt-3.5-turbo", "prompt": "Test", "max_tokens": 10}'
 
 # Check metrics
 curl http://localhost:8000/metrics
+
+# Or test with the quickstart script
+./quickstart-install-infra.sh -n dev-llm -o dev-monitoring
 ```
 
 ## Cleanup
 
-To remove all resources:
+### Option 1: Using the Quickstart Script (Recommended)
+
+```bash
+# Uninstall everything
+./quickstart-install-infra.sh --uninstall
+
+# Uninstall and delete Kind cluster
+./quickstart-install-infra.sh --kind --uninstall
+```
+
+### Option 2: Manual Cleanup
+
+To remove all resources manually:
 
 ```bash
 # Remove vLLM application resources
-kubectl delete -k kubernetes/kustomize/base
+kubectl delete -k kubernetes/kustomize/overlays/default
 
 # Remove Prometheus resources
-kubectl delete -k kubernetes/kustomize/prometheus
+kubectl delete -k kubernetes/kustomize/overlays/prometheus
 
 # Remove Istio (optional)
+# Set environment variables for custom namespaces (if used)
+export VLLM_NAMESPACE=llm
+export OBSERVABILITY_NAMESPACE=llm-observability
 ./kubernetes/helpers/istio-install.sh uninstall
 
 # Remove Prometheus Operator (optional)
@@ -407,8 +511,40 @@ kubectl delete namespace llm-observability
 For Kind cluster:
 
 ```bash
-kind delete cluster --name vllm-cluster
+kind delete cluster --name kuadrant-llm-cluster
 ```
+
+## Namespace Configuration Summary
+
+This deployment uses proper namespace isolation with Kustomize overlays:
+
+### Default Namespaces
+- **`llm`**: vLLM simulator, Gateway API resources
+- **`llm-observability`**: Prometheus monitoring stack
+
+### Customizing Namespaces
+
+**Using the Quickstart Script:**
+```bash
+./quickstart-install-infra.sh -n <vllm-namespace> -o <observability-namespace>
+```
+
+**Using Environment Variables with istio-install.sh:**
+```bash
+export VLLM_NAMESPACE=my-app
+export OBSERVABILITY_NAMESPACE=my-monitoring
+./kubernetes/helpers/istio-install.sh apply
+```
+
+**Using Custom Overlays:**
+Create new overlays in `kubernetes/kustomize/overlays/` with different `namespace:` values.
+
+### Available Overlays
+- `overlays/default/`: Uses `llm` namespace
+- `overlays/dev/`: Uses `llm-dev` namespace with development patches
+- `overlays/prometheus/`: Uses `llm-observability` namespace
+
+The base resources in `kubernetes/kustomize/base/` and `kubernetes/kustomize/prometheus/` are namespace-agnostic and work with any overlay configuration.
 
 ## License
 
