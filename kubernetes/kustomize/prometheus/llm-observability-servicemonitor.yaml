@@ -2,7 +2,6 @@ apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
   name: llm-observability-self
-  namespace: llm-observability
   labels:
     app: llm-observability
 spec:
@@ -17,7 +16,6 @@ apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
   name: vllm-simulator-monitor
-  namespace: llm-observability
   labels:
     app: vllm-simulator
 spec:

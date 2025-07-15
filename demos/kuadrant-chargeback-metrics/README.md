@@ -9,7 +9,7 @@ This demo showcases enhanced cost tracking and chargeback capabilities using a c
 ## Prerequisites
 
 - Kubernetes cluster with Gateway API support
-- Kuadrant installed (see [bootstrap/kuadrant-setup](../../bootstrap/kuadrant-setup/README.md))
+- Kuadrant installed (see [bootstrap-infra/kuadrant-setup](../../bootstrap-infra/kuadrant-setup/README.md))
 - vLLM inference environment (see [kubernetes-setup](../../kubernetes-setup/README.md))
 - `kubectl` configured to access your cluster
 

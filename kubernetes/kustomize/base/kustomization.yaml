@@ -10,5 +10,3 @@ labels:
 - pairs:
     environment: base
     project: vllm-simulator
-
-namespace: llm
