@@ -123,7 +123,7 @@ curl -X POST http://localhost:8000/v1/completions \
     "model": "Qwen/Qwen3-0.6B",
     "prompt": "Meowdy partner",
     "max_tokens": 50
-  }'
+  }' | jq .
 
 # Test chat completions endpoint
 curl -X POST http://localhost:8000/v1/chat/completions \
@@ -132,7 +132,7 @@ curl -X POST http://localhost:8000/v1/chat/completions \
     "model": "Qwen/Qwen3-0.6B",
     "messages": [{"role": "user", "content": "Hello!"}],
     "max_tokens": 50
-  }'
+  }' | jq .
 
 # List available models
 curl http://localhost:8000/v1/models
@@ -148,20 +148,22 @@ kubectl scale deployment vllm-simulator --replicas=3 -n llm
 
 # Check the scaled pods
 kubectl get pods -l app=vllm-simulator -n llm
-
-# View the naive load balancing across your vllm replicas by displaying the pod name with each log line
-kubectl logs -l app=vllm-simulator -n llm -f --prefix
 ```
 
-<details>
-<summary>Example output:</summary>
+---
+
+> View the naive load balancing across your vllm replicas by displaying the pod prefix for each unique pod. In another console, send completion requests.
+
+
+```text
+kubectl logs -l app=vllm-simulator -n llm -f --prefix
 [pod/vllm-simulator-646cb8db6c-tgwm6/vllm-simulator] I0713 04:02:50.125728       1 simulator.go:310] "completion request received"
 [pod/vllm-simulator-646cb8db6c-t9jvj/vllm-simulator] I0713 04:02:51.369322       1 simulator.go:310] "completion request received"
 [pod/vllm-simulator-646cb8db6c-5bfg9/vllm-simulator] I0713 04:02:52.233316       1 simulator.go:310] "completion request received"
 [pod/vllm-simulator-646cb8db6c-tgwm6/vllm-simulator] I0713 04:02:53.097022       1 simulator.go:310] "completion request received"
 [pod/vllm-simulator-646cb8db6c-5bfg9/vllm-simulator] I0713 04:02:53.918130       1 simulator.go:310] "completion request received"
 [pod/vllm-simulator-646cb8db6c-t9jvj/vllm-simulator] I0713 04:02:54.780033       1 simulator.go:310] "completion request received"
-</details>
+```
 
 ### Validate Prometheus
 
@@ -371,7 +373,7 @@ kubectl apply -k kubernetes/kustomize/overlays/dev
 # Test the endpoints
 curl -X POST http://localhost:8000/v1/completions \
   -H "Content-Type: application/json" \
-  -d '{"model": "gpt-3.5-turbo", "prompt": "Test", "max_tokens": 10}'
+  -d '{"model": "Qwen/Qwen3-0.6B", "prompt": "Test", "max_tokens": 10}' | jq .
 
 # Check metrics
 curl http://localhost:8000/metrics

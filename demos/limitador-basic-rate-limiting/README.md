@@ -1,6 +1,6 @@
 # Limitador Basic Rate Limiting Demo
 
-This demo demonstrates API key authentication combined with rate limiting using Kuadrant's Authorino and Limitador components for the vLLM inference gateway.
+This demo demonstrates API key authentication combined with rate limiting using Kuadrant's Authorino and Limitador components for an inference gateway.
 
 ## Overview
 
@@ -227,60 +227,6 @@ Expected output:
 limited_calls{limitador_namespace="llm/vllm-gateway"} 8
 # HELP authorized_calls Authorized calls
 authorized_calls{limitador_namespace="llm/vllm-gateway"} 12
-```
-
-## Load Testing
-
-### Generate Mixed Traffic
-
-Create realistic load with both free and premium users:
-
-```bash
-# Mixed load test
-echo "Starting mixed load test..."
-
-# Premium user burst
-for i in {1..5}; do
-  curl -s -o /dev/null -w "Premium req $i: %{http_code}\n" \
-    -X POST http://localhost:8000/v1/completions \
-    -H 'Authorization: APIKEY premiumuser1_key' \
-    -H 'Content-Type: application/json' \
-    -d '{"model":"Qwen/Qwen3-0.6B","prompt":"Premium request","max_tokens":10}'
-done
-
-# Free user burst (should hit limits quickly)
-for i in {1..5}; do
-  curl -s -o /dev/null -w "Free req $i: %{http_code}\n" \
-    -X POST http://localhost:8000/v1/completions \
-    -H 'Authorization: APIKEY freeuser1_key' \
-    -H 'Content-Type: application/json' \
-    -d '{"model":"Qwen/Qwen3-0.6B","prompt":"Free request","max_tokens":10}'
-done
-```
-
-### Rate Limit Recovery Test
-
-Test rate limit recovery after the time window:
-
-```bash
-# Exhaust free tier limits
-for i in {1..3}; do
-  curl -s -o /dev/null -w "Initial req $i: %{http_code}\n" \
-    -X POST http://localhost:8000/v1/completions \
-    -H 'Authorization: APIKEY freeuser1_key' \
-    -H 'Content-Type: application/json' \
-    -d '{"model":"Qwen/Qwen3-0.6B","prompt":"Test","max_tokens":10}'
-done
-
-echo "Waiting 2 minutes for rate limit reset..."
-sleep 120
-
-# Should work again
-curl -s -o /dev/null -w "After reset: %{http_code}\n" \
-  -X POST http://localhost:8000/v1/completions \
-  -H 'Authorization: APIKEY freeuser1_key' \
-  -H 'Content-Type: application/json' \
-  -d '{"model":"Qwen/Qwen3-0.6B","prompt":"Test","max_tokens":10}'
 ```
 
 ## Troubleshooting
