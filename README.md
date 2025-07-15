@@ -23,27 +23,31 @@ For detailed architectural information, see the [Kuadrant Architectural Overview
 ### Prerequisites
 
 - Kubernetes cluster (1.23+)
-- Helm 3.9+
-- kubectl configured
-- Gateway API CRDs installed
+- [Helm 3.9+](https://helm.sh/docs/intro/install/)
+- kubectl
+- Kustomize – [installation](https://kubectl.docs.kubernetes.io/installation/kustomize/)
+- yq (mikefarah) – [installation](https://github.com/mikefarah/yq?tab=readme-ov-file#install)
+- jq – [download & install guide](https://stedolan.github.io/jq/download/)
 
-### 1. Bootstrap Environment
+### 1. Bootstrap Infra Environment
 
-Begin with 🏁 **[→ Bootstrapping a Kube cluster](./bootstrap/kubernetes-setup/README.md)** to setup the base Kubernetes environment with Gateway API and vLLM.
+For a completely scripted quickstart see **[→ Kuadrant LLM Integration Installer – Quick‑start](./bootstrap-infra/kubernetes-setup/quickstart-installer.md)**.
+
+Begin with 🏁 **[→ Bootstrapping a Kube cluster](./bootstrap-infra/kubernetes-setup/README.md)** to setup the base Kubernetes infra with Gateway API and vLLM.
 
 **Options:**
 
-- **Kind** - included is a fully functional Kind deployment including a vLLM simulator, Istio service mesh and Prometheus monitoring for load balancing across scalable vLLM replicas. See the Kind installation in [Bootstrapping a Kube cluster](./bootstrap/kubernetes-setup/README.md) for instructions.
+- **Kind** - included is a fully functional Kind deployment including a vLLM simulator, Istio service mesh and Prometheus monitoring for load balancing across scalable vLLM replicas. See the Kind installation in [Bootstrapping a Kube cluster](./bootstrap-infra/kubernetes-setup/README.md) for instructions.
 - Bring your own cluster, vanilla Kubernetes, [RHOAI](https://www.redhat.com/en/products/ai/openshift-ai), etc.
-- **llm-d** - This is compatable with a standard llm-d deployment. To bootstrap your llm-d environment, see the [llm-d Quickstart](https://github.com/llm-d/llm-d-deployer/tree/main/quickstart). You may need to modify the namespace user here from `llm` to `llm-d` as that is the default namespace from the llm-d quickstart (or install llm-d with a matching namespace via the deployer). Istio and GAIE/IGW components are already deployed so no further setup is nessecary. You can jump straight into a demo.
+- **llm-d** - See 🏁 **[→ Deploying Kuadrant on llm-d Quickstart](./bootstrap-infra/kuadrant-setup/llm-d-kuadrant-installation.md)**
 
 ### 2. Install Kuadrant
 
-Follow the setup guide:
+Follow the setup guide if you already have an existing cluster running:
 
-📖 **[→ Kuadrant Setup Guide](bootstrap/kuadrant-setup/README.md)**
+📖 **[→ Kuadrant Setup Guide](bootstrap-infra/kuadrant-setup/README.md)**
 
-- Lightweight vLLM inference simulation service via the [llm-d](https://github.com/llm-d/llm-d-inference-sim) project.
+- GPU acceleraters are not required as we are deploying a vLLM inference simulator service via the [llm-d](https://github.com/llm-d/llm-d-inference-sim) project. Swap out images to use vLLM or use the llm-d project option above for true end to end inference validation.
 
 ### 3. Choose Your Demo
 
@@ -203,7 +207,7 @@ kubectl get ratelimitpolicy -n llm
 ## Repository Structure
 
 ```text
-├── bootstrap/
+├── bootstrap-infra/
 │   |── kubernetes-setup                # Bootstrap a Kind or llm-d cluster or bring your own
 │   └── kuadrant-setup/                 # Kuadrant installation and setup
 ├── demos/
@@ -230,4 +234,4 @@ kubectl get ratelimitpolicy -n llm
 ## Lets Hack
 
 Feel free to contribute use cases, demos, PRs or reach out for realtime colaboration via the llm-d project [Slack](https://github.com/llm-d/llm-d?tab=readme-ov-file#contribute).
-Begin with the [Kind Setup](bootstrap/kubernetes-setup/README.md) or bring your own k8s cluster and then check out the [Kuadrant Setup](bootstrap/kuadrant-setup/README.md) to prepare your environment, then explore the demos that match your use case!
+Begin with the [Kind Setup](bootstrap-infra/kubernetes-setup/README.md) or bring your own llm-d or k8s cluster and then check out the [Kuadrant Setup](bootstrap-infra/kuadrant-setup/README.md) to prepare your environment, then explore the demos that match your use case!

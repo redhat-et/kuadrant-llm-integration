@@ -2,7 +2,6 @@ apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
   name: authorino-runtime
-  namespace: llm-observability
   labels:
     environment: base
     project: llm-observability
@@ -28,7 +27,6 @@ apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
   name: limitador-runtime
-  namespace: llm-observability
   labels:
     environment: base
     project: llm-observability

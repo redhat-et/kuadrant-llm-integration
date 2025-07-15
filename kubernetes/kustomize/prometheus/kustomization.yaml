@@ -12,5 +12,3 @@ labels:
 - pairs:
     environment: base
     project: llm-observability
-
-namespace: llm-observability

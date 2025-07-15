@@ -2,7 +2,6 @@ apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
   name: vllm-gateway
-  namespace: llm
   labels:
     kuadrant.io/gateway: "true"
 spec:
@@ -19,11 +18,9 @@ apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
   name: vllm-httproute
-  namespace: llm
 spec:
   parentRefs:
   - name: vllm-gateway
-    namespace: llm
   rules:
   - matches:
     - path:

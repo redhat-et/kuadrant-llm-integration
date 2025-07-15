@@ -9,7 +9,7 @@ This demo showcases how to implement tiered rate limiting based on API key authe
 ## Prerequisites
 
 - Kubernetes cluster with Gateway API support
-- Kuadrant installed (see [bootstrap/kuadrant-setup](../../bootstrap/kuadrant-setup/README.md))
+- Kuadrant installed (see [bootstrap-infra/kuadrant-setup](../../bootstrap-infra/kuadrant-setup/README.md))
 - vLLM inference environment (see [kubernetes-setup](../../kubernetes-setup/README.md))
 - `kubectl` configured to access your cluster
 
@@ -28,6 +28,13 @@ This demo sets up:
 - **Premium Tier**: 10 requests per 2 minutes
 
 ## Setup
+
+### Optional Changing the namespace
+
+```bash
+yq eval 'select(.metadata.namespace == "llm").metadata.namespace = "llm-d"' \
+  -i demos/limitador-basic-rate-limiting/rate-limit-policy.yaml
+```
 
 ### Step 1: Deploy API Keys, AuthPolicy, and RateLimitPolicy
 

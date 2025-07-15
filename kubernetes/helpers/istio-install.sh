@@ -6,8 +6,8 @@
 # - Gateway API CRDs (for HTTPRoute support)
 # - Istio base components
 # - Istiod control plane
-# - Creates the `llm` and `llm-observability` namespaces
-# - Enables Istio injection for `default`, `llm`, and `llm-observability` namespaces
+# - Creates the specified namespaces
+# - Enables Istio injection for `default` and specified namespaces
 
 set -e
 
@@ -15,9 +15,15 @@ MODE=${1:-apply}
 TAG=1.26.2
 HUB=gcr.io/istio-release
 
+# Default namespace values, can be overridden by environment variables
+VLLM_NAMESPACE=${VLLM_NAMESPACE:-llm}
+OBSERVABILITY_NAMESPACE=${OBSERVABILITY_NAMESPACE:-llm-observability}
+
 echo "Istio installation mode: $MODE"
 echo "Using tag: $TAG"
 echo "Using hub: $HUB"
+echo "vLLM namespace: $VLLM_NAMESPACE"
+echo "Observability namespace: $OBSERVABILITY_NAMESPACE"
 
 if [[ "$MODE" == "apply" ]]; then
     echo "Installing Istio..."
@@ -35,31 +41,18 @@ if [[ "$MODE" == "apply" ]]; then
     helm upgrade -i istiod oci://$HUB/charts/istiod --version $TAG -n istio-system --set tag=$TAG --set hub=$HUB --wait
 
     # Create namespaces if they don't exist
-    echo "Creating llm namespace..."
-    kubectl create namespace llm --dry-run=client -o yaml | kubectl apply -f -
-    echo "Creating llm-observability namespace..."
-    kubectl create namespace llm-observability --dry-run=client -o yaml | kubectl apply -f -
-
-    # Enable Istio injection for all namespaces
-    echo "Enabling Istio injection for default namespace..."
-    kubectl label namespace default istio-injection=enabled --overwrite
-    echo "Enabling Istio injection for llm namespace..."
-    kubectl label namespace llm istio-injection=enabled --overwrite
-    echo "Enabling Istio injection for llm-observability namespace..."
-    kubectl label namespace llm-observability istio-injection=enabled --overwrite
+    echo "Creating $VLLM_NAMESPACE namespace..."
+    kubectl create namespace "$VLLM_NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
+    echo "Creating $OBSERVABILITY_NAMESPACE namespace..."
+    kubectl create namespace "$OBSERVABILITY_NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
 
     echo "Istio installation completed successfully!"
     echo "Gateway API CRDs and Istio are now installed."
-    echo "Istio injection is enabled for 'default', 'llm', and 'llm-observability' namespaces."
+    echo "Istio injection is enabled for 'default', '$VLLM_NAMESPACE', and '$OBSERVABILITY_NAMESPACE' namespaces."
     echo "You can now deploy your applications with Istio Gateway and HTTPRoute support."
 
 elif [[ "$MODE" == "uninstall" ]]; then
     echo "Uninstalling Istio..."
-
-    # Remove Istio injection labels
-    kubectl label namespace default istio-injection- --ignore-not-found
-    kubectl label namespace llm istio-injection- --ignore-not-found
-    kubectl label namespace llm-observability istio-injection- --ignore-not-found
 
     # Uninstall Helm releases
     helm uninstall istiod --ignore-not-found --namespace istio-system || true
