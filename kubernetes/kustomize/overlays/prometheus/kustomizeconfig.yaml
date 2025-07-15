@@ -1,0 +1,4 @@
+namespace:
+  - kind: ClusterRoleBinding
+    path: subjects/namespace
+# TODO: not working for prometheus-rbac.yaml

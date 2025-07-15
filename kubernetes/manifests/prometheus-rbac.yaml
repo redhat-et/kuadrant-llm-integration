@@ -35,5 +35,4 @@ roleRef:
   name: prometheus
 subjects:
 - kind: ServiceAccount
-  name: prometheus
-  namespace: default
+  name: llm-observability

@@ -7,7 +7,6 @@
 # - Istio base components
 # - Istiod control plane
 # - Creates the specified namespaces
-# - Enables Istio injection for `default` and specified namespaces
 
 set -e
 
@@ -48,7 +47,6 @@ if [[ "$MODE" == "apply" ]]; then
 
     echo "Istio installation completed successfully!"
     echo "Gateway API CRDs and Istio are now installed."
-    echo "Istio injection is enabled for 'default', '$VLLM_NAMESPACE', and '$OBSERVABILITY_NAMESPACE' namespaces."
     echo "You can now deploy your applications with Istio Gateway and HTTPRoute support."
 
 elif [[ "$MODE" == "uninstall" ]]; then
