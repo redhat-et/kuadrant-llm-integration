@@ -102,7 +102,7 @@ kubectl get crd | grep kuadrant
 
 ### Step 4: Configure Enhanced Limitador
 
-Deploy the custom Limitador image with user/group tracking capabilities:
+Deploy a forked Limitador image with user/group tracking capabilities. This is a demo [Limitador patch](https://github.com/Kuadrant/limitador/compare/main...nerdalert:limitador:user-tracking-prom-metrics) for upstream conversations:
 
 ```bash
 # Patch Limitador to use custom image
