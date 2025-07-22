@@ -18,6 +18,10 @@ The solution leverages:
 
 For detailed architectural information, see the [Kuadrant Architectural Overview](https://docs.kuadrant.io/1.0.x/architecture/docs/design/architectural-overview/).
 
+## llm-d Deployment
+
+> To deploy on llm-d, please see this end to end walkthrough and demo 📖 **[→ Kuadrant with llm-d Integration Demo](llm-d/README.md)**
+
 ## Quick Start
 
 ### Prerequisites
@@ -39,7 +43,7 @@ Begin with 🏁 **[→ Bootstrapping a Kube cluster](./bootstrap-infra/kubernete
 
 - **Kind** - included is a fully functional Kind deployment including a vLLM simulator, Istio service mesh and Prometheus monitoring for load balancing across scalable vLLM replicas. See the Kind installation in [Bootstrapping a Kube cluster](./bootstrap-infra/kubernetes-setup/README.md) for instructions.
 - Bring your own cluster, vanilla Kubernetes, [RHOAI](https://www.redhat.com/en/products/ai/openshift-ai), etc.
-- **llm-d** - See 🏁 **[→ Deploying Kuadrant on llm-d Quickstart](./bootstrap-infra/kuadrant-setup/llm-d-kuadrant-installation.md)**
+- **llm-d** - See 🏁 **[→ Deploying Kuadrant on llm-d Quickstart](./llm-d/README.md)**
 
 ### 2. Install Kuadrant
 
@@ -105,71 +109,6 @@ Advanced usage tracking with custom Limitador for detailed billing and cost anal
 
 **Potential Use Case:** Enterprise environments requiring detailed usage analytics and billing.
 
-## Key Features
-
-### 🔒 Security & Authentication
-
-- **API Key Authentication**: Secure access control using Kubernetes secrets
-- **Policy-Based Authorization**: Fine-grained access control with OPA
-- **Identity Extraction**: User and group information for personalized policies
-
-### 🎯 Rate Limiting & Quotas
-
-- **Tiered Rate Limiting**: Different limits for different user tiers
-- **Per-User Enforcement**: Independent rate limits per authenticated user
-- **Flexible Time Windows**: Configurable rate limit periods
-- **Grace Period Handling**: Smooth recovery after rate limit resets
-
-### 📊 Monitoring & Observability
-
-- **Prometheus Integration**: Comprehensive metrics collection
-- **User-Level Metrics**: Detailed tracking per user and group
-- **Cost Tracking**: Usage-based billing and chargeback capabilities
-- **Real-Time Dashboards**: Live monitoring and alerting
-
-### 🏗️ Production-Ready Architecture
-
-- **Cloud-Native Design**: Kubernetes-native components
-- **Scalable Infrastructure**: Horizontal scaling for high availability
-- **Standards-Based**: Uses Gateway API for vendor neutrality
-- **Observability-First**: Built-in monitoring and logging
-
-## Namespace Organization
-
-The solution uses a well-organized namespace structure:
-
-- **`llm`**: vLLM inference services and Gateway API resources
-- **`llm-observability`**: Prometheus and monitoring components
-- **`kuadrant-system`**: Kuadrant control plane (Authorino, Limitador, etc.)
-- **`istio-system`**: Istio service mesh components
-
-## Common Use Cases
-
-### 1. API Gateway for ML Services
-
-Deploy secure, scalable access to machine learning inference services with authentication and rate limiting.
-
-### 2. SaaS API Monetization
-
-Implement tiered pricing models with usage-based billing and detailed analytics.
-
-### 3. Multi-Tenant ML Platform
-
-Provide isolated access to ML services for different users and organizations.
-
-### 4. Cost Management & Chargeback
-
-Track and allocate costs based on actual API usage across different users and teams.
-
-## Testing and Validation
-
-Each demo includes comprehensive testing instructions:
-
-- **Unit Tests**: Individual component validation
-- **Integration Tests**: End-to-end workflow testing
-- **Load Testing**: Performance and scalability validation
-- **Metrics Validation**: Monitoring and alerting verification
-
 ## General Troubleshooting for all Demos
 
 Common issues and solutions:
@@ -207,17 +146,68 @@ kubectl get ratelimitpolicy -n llm
 ## Repository Structure
 
 ```text
-├── bootstrap-infra/
-│   |── kubernetes-setup                # Bootstrap a Kind or llm-d cluster or bring your own
-│   └── kuadrant-setup/                 # Kuadrant installation and setup
-├── demos/
-│   ├── authorino-authorization/        # Basic API key authentication demo
-│   ├── limitador-basic-rate-limiting/  # Rate limiting with user tiers
-│   └── kuadrant-chargeback-metrics/    # Advanced usage tracking and billing
-├── kubernetes/
-│   ├── helpers/                        # Helper scripts for setup
-│   └── kustomize/                      # Kubernetes manifests and overlays
-└── README.md
+├── README.md
+├── bootstrap-infra
+│   ├── kuadrant-setup
+│   │   ├── README.md
+│   │   └── llm-d-kuadrant-installation.md
+│   └── kubernetes-setup
+│       ├── README.md
+│       └── quickstart-installer.md
+├── demos
+│   ├── authorino-authorization
+│   │   ├── README.md
+│   │   └── auth-policy.yaml
+│   ├── kuadrant-chargeback-metrics
+│   │   ├── README.md
+│   │   ├── chargeback-policy.yaml
+│   │   └── limitador-servicemonitor.yaml
+│   ├── limitador-basic-rate-limiting
+│   │   ├── README.md
+│   │   └── rate-limit-policy.yaml
+│   └── limitador-token-rate-limiting
+│       └── README.md
+├── kubernetes
+│   ├── helpers
+│   │   └── istio-install.sh
+│   ├── kustomize
+│   │   ├── base
+│   │   │   ├── istio-gateway.yaml
+│   │   │   ├── kustomization.yaml
+│   │   │   ├── vllm-deployment.yaml
+│   │   │   └── vllm-service.yaml
+│   │   ├── overlays
+│   │   │   ├── default
+│   │   │   │   ├── kustomization.yaml
+│   │   │   │   └── namespace.yaml
+│   │   │   ├── dev
+│   │   │   │   ├── kustomization.yaml
+│   │   │   │   ├── namespace.yaml
+│   │   │   │   └── vllm-deployment-patch.yaml
+│   │   │   └── prometheus
+│   │   │       ├── kustomization.yaml
+│   │   │       ├── kustomizeconfig.yaml
+│   │   │       └── namespace.yaml
+│   │   └── prometheus
+│   │       ├── kuadrant-servicemonitors.yaml
+│   │       ├── kustomization.yaml
+│   │       ├── llm-observability-servicemonitor.yaml
+│   │       ├── prometheus-config.yaml
+│   │       ├── prometheus-deployment.yaml
+│   │       └── prometheus-rbac.yaml
+│   └── manifests
+│       ├── istio-gateway.yaml
+│       ├── kuadrant-servicemonitors.yaml
+│       ├── prometheus-config.yaml
+│       ├── prometheus-deployment.yaml
+│       ├── prometheus-rbac.yaml
+│       ├── vllm-deployment.yaml
+│       └── vllm-service.yaml
+├── llm-d
+│   ├── README.md
+│   ├── limitador-servicemonitor.yaml
+│   └── llm-d-chargeback-policy.yaml
+└── quickstart-install-infra.sh
 ```
 
 ## References
