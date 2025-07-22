@@ -1,0 +1,17 @@
+# Build artifacts
+processor/processor
+*.exe
+
+# Test artifacts  
+*.json
+test-*
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db 
