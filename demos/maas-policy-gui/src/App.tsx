@@ -1,18 +1,14 @@
 import React, { useState } from 'react';
 import {
   Box,
-  Drawer,
   AppBar,
   Toolbar,
-  List,
   Typography,
-  ListItem,
-  ListItemButton,
-  ListItemIcon,
-  ListItemText,
   IconButton,
   Menu,
   MenuItem,
+  Container,
+  Button,
 } from '@mui/material';
 import {
   Policy as PolicyIcon,
@@ -21,12 +17,14 @@ import {
   AccountCircle,
   Apps as AppsIcon,
   Help as HelpIcon,
+  Book as KnowledgeIcon,
+  CheckCircle as StatusIcon,
 } from '@mui/icons-material';
 import PolicyManager from './components/PolicyManager';
 import MetricsDashboard from './components/MetricsDashboard';
 import RequestSimulator from './components/RequestSimulator';
 
-const drawerWidth = 240;
+const drawerWidth = 0; // No sidebar anymore
 
 const navigationItems = [
   { text: 'Policy Manager', icon: <PolicyIcon />, id: 'policies' },
@@ -104,30 +102,40 @@ function App() {
                 />
               </Box>
             </Box>
-            <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+            
+            {/* Vertical line separator */}
+            <Box
+              sx={{
+                width: '2px',
+                height: '30px',
+                backgroundColor: 'rgba(255, 255, 255, 0.3)',
+                mr: 2,
+              }}
+            />
+            
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
               <Typography 
-                variant="body1" 
+                variant="h5" 
                 sx={{ 
                   color: 'white', 
                   fontWeight: 600,
-                  fontSize: '16px',
+                  fontSize: '24px',
                   lineHeight: 1.2,
-                  letterSpacing: '0.5px'
+                  letterSpacing: '0.5px',
+                  mr: 2,
                 }}
               >
-                Red Hat
+                MaaS
               </Typography>
               <Typography 
                 variant="body2" 
                 sx={{ 
-                  color: '#b3b3b3', 
+                  color: 'rgba(255, 255, 255, 0.7)', 
+                  fontSize: '14px',
                   fontWeight: 400,
-                  fontSize: '13px',
-                  lineHeight: 1.1,
-                  mt: -0.2
                 }}
               >
-                MaaS - Inference Model as a Service
+                Inference Model as a Service
               </Typography>
             </Box>
           </Box>
@@ -160,58 +168,114 @@ function App() {
         </Toolbar>
       </AppBar>
 
-      {/* Sidebar */}
-      <Drawer
-        variant="permanent"
+      {/* Horizontal Navigation Bar */}
+      <Box
         sx={{
-          width: drawerWidth,
-          flexShrink: 0,
-          '& .MuiDrawer-paper': {
-            width: drawerWidth,
-            boxSizing: 'border-box',
-            backgroundColor: '#212427',
-            borderRight: 'none',
-            marginTop: '60px', // Height of the header
-          },
+          backgroundColor: '#2b3138',
+          borderBottom: '1px solid #3b4148',
+          position: 'fixed',
+          top: '60px',
+          left: 0,
+          right: 0,
+          height: '50px',
+          zIndex: 1100,
         }}
       >
-        <List sx={{ pt: 2 }}>
-          {navigationItems.map((item) => (
-            <ListItem key={item.id} disablePadding>
-              <ListItemButton
-                onClick={() => setCurrentView(item.id)}
+        <Container maxWidth={false} sx={{ height: '100%' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', height: '100%', pl: 2 }}>
+            {/* Policies */}
+            <Box
+              onClick={() => setCurrentView('policies')}
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                px: 2,
+                py: 1,
+                mr: 4,
+                cursor: 'pointer',
+                backgroundColor: currentView === 'policies' ? 'rgba(255,255,255,0.1)' : 'transparent',
+                '&:hover': {
+                  backgroundColor: 'rgba(255,255,255,0.1)',
+                },
+              }}
+            >
+              <KnowledgeIcon sx={{ fontSize: '18px', color: '#ffffff', mr: 1 }} />
+              <Typography
                 sx={{
-                  color: currentView === item.id ? '#ffffff' : '#b1b3b6',
-                  backgroundColor: currentView === item.id ? '#3d4147' : 'transparent',
-                  mx: 1,
-                  mb: 0.5,
-                  borderRadius: '4px',
-                  '&:hover': {
-                    backgroundColor: currentView === item.id ? '#3d4147' : '#2c2f33',
-                    color: '#ffffff',
-                  },
+                  color: '#ffffff',
+                  fontSize: '14px',
+                  fontWeight: 400,
                 }}
               >
-                <ListItemIcon
-                  sx={{
-                    color: currentView === item.id ? '#ffffff' : '#b1b3b6',
-                    minWidth: 40,
-                  }}
-                >
-                  {item.icon}
-                </ListItemIcon>
-                <ListItemText
-                  primary={item.text}
-                  primaryTypographyProps={{
-                    fontSize: '14px',
-                    fontWeight: currentView === item.id ? 600 : 400,
-                  }}
-                />
-              </ListItemButton>
-            </ListItem>
-          ))}
-        </List>
-      </Drawer>
+                Policies
+              </Typography>
+            </Box>
+            
+            {/* System Status with green dot */}
+            <Box
+              onClick={() => setCurrentView('metrics')}
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                px: 2,
+                py: 1,
+                mr: 4,
+                cursor: 'pointer',
+                backgroundColor: currentView === 'metrics' ? 'rgba(255,255,255,0.1)' : 'transparent',
+                '&:hover': {
+                  backgroundColor: 'rgba(255,255,255,0.1)',
+                },
+              }}
+            >
+              <Box
+                sx={{
+                  width: '8px',
+                  height: '8px',
+                  backgroundColor: '#4caf50',
+                  borderRadius: '50%',
+                  mr: 1,
+                }}
+              />
+              <Typography
+                sx={{
+                  color: '#ffffff',
+                  fontSize: '14px',
+                  fontWeight: 400,
+                }}
+              >
+                System Status
+              </Typography>
+            </Box>
+            
+            {/* Simulator */}
+            <Box
+              onClick={() => setCurrentView('simulator')}
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                px: 2,
+                py: 1,
+                cursor: 'pointer',
+                backgroundColor: currentView === 'simulator' ? 'rgba(255,255,255,0.1)' : 'transparent',
+                '&:hover': {
+                  backgroundColor: 'rgba(255,255,255,0.1)',
+                },
+              }}
+            >
+              <SimulatorIcon sx={{ fontSize: '18px', color: '#ffffff', mr: 1 }} />
+              <Typography
+                sx={{
+                  color: '#ffffff',
+                  fontSize: '14px',
+                  fontWeight: 400,
+                }}
+              >
+                Simulator
+              </Typography>
+            </Box>
+          </Box>
+        </Container>
+      </Box>
 
       {/* Main content */}
       <Box
@@ -219,8 +283,10 @@ function App() {
         sx={{
           flexGrow: 1,
           backgroundColor: '#f5f5f5',
-          marginTop: '60px', // Height of the header
+          marginTop: '110px', // Account for header (60px) + nav bar (50px)
           overflow: 'auto',
+          p: 3,
+          minHeight: 'calc(100vh - 110px)',
         }}
       >
         {renderContent()}
