@@ -1,147 +1,162 @@
-# MaaS Policy Management GUI
+# MaaS Policy GUI - EC2 Deployment
 
-A full-featured Model as a Service (MaaS) policy management system built with React, demonstrating a comprehensive policy management interface for three different user personas.
+A simple EC2 deployment for the MaaS (Model as a Service) Policy GUI demo application.
 
-## 🚀 Features
+## Overview
 
-### 🧑‍💼 Policy Manager
-- **Full CRUD Operations**: Create, read, update, and delete policies
-- **Drag-and-Drop Policy Builder**: Intuitive interface for composing policies
-- **Flexible Policy Rules**: Support for team-based and model-based policies
-- **Request Limits**: Configure rate limiting by requests and tokens
-- **Time Constraints**: Set allowed time ranges for policy execution
-- **Approve/Reject Logic**: Define whether policies approve or reject matching requests
+This deployment creates a single EC2 instance with:
+- ✅ **React Application**: Served via nginx on port 80
+- ✅ **Node.js + PM2**: Process management for reliability  
+- ✅ **Direct File Transfer**: No S3 dependencies, files copied via SCP
+- ✅ **Simple Setup**: Uses default VPC, minimal infrastructure
 
-### 📊 Live Metrics Dashboard
-- **Real-time Updates**: Live streaming of request data every 2 seconds
-- **Comprehensive Filtering**: Filter by team, model, decision, and custom search
-- **Statistics Overview**: Real-time acceptance rates and request counts
-- **Interactive Controls**: Pause/resume live updates and clear data
-- **Detailed Request History**: Complete audit trail with timestamps and reasoning
+## Prerequisites
 
-### ⚙️ Request Simulator
-- **Interactive Request Composition**: Drag-and-drop interface for building requests
-- **Bulk Simulation**: Test 1-100 requests at once
-- **Policy Validation**: Real-time evaluation against existing policies
-- **Detailed Results**: See exactly why requests are accepted or rejected
-- **Performance Metrics**: Track acceptance rates across simulations
+1. **AWS CLI**: Installed and configured
+2. **Ansible**: Installed for infrastructure automation
+   - macOS: `brew install ansible`
+   - RHEL/CentOS: `sudo yum install ansible`
+   - Ubuntu: `sudo apt install ansible`
+3. **EC2 Key Pair**: `router-team-us-east2` (or update `KEY_NAME` in script)
+4. **Node.js**: For building the React application locally
+5. **SSH Access**: Key file permissions set to 400
 
-## 🛠️ Technologies Used
+## Quick Start
 
-- **React 18** - Modern React with hooks and functional components
-- **TypeScript** - Type-safe development
-- **Material-UI (MUI)** - Professional UI components and theming
-- **React Beautiful DnD** - Smooth drag-and-drop interactions
-- **React Router DOM** - Client-side routing
-- **Day.js** - Date and time manipulation
+### Deploy
 
-## 📦 Installation
-
-1. **Navigate to the project directory**:
-   ```bash
-   cd demos/maas-policy-gui
-   ```
-
-2. **Install dependencies**:
-   ```bash
-   npm install
-   ```
-
-3. **Start the development server**:
-   ```bash
-   npm start
-   ```
-
-4. **Open your browser** and visit `http://localhost:3000`
-
-## 🎯 Usage Guide
-
-### Policy Manager
-1. Click "Create Policy" to start building a new policy
-2. Drag teams and models from the available items to the policy area
-3. Toggle between "Approve" and "Reject" for each policy item
-4. Set request limits and time constraints as needed
-5. Save your policy to see it in the main list
-
-### Live Metrics Dashboard
-1. The dashboard automatically starts generating mock request data
-2. Use the filters to narrow down the data view
-3. Click the pause button to stop live updates
-4. Use the search bar to find specific requests
-5. Clear all data with the clear button
-
-### Request Simulator
-1. Drag a team and model to the request composer area
-2. Set the time of day and enter a query
-3. Choose how many requests to simulate (1-100)
-4. Click "Simulate Request" to test against your policies
-5. Review the results to understand policy behavior
-
-## 🏗️ Project Structure
-
-```
-src/
-├── components/           # React components
-│   ├── PolicyManager.tsx    # Policy CRUD interface
-│   ├── PolicyBuilder.tsx    # Drag-and-drop policy creator
-│   ├── MetricsDashboard.tsx # Live metrics and filtering
-│   └── RequestSimulator.tsx # Request testing interface
-├── types.ts             # TypeScript type definitions
-├── mockData.ts          # Sample data and generators
-├── App.tsx              # Main application component
-└── index.tsx            # Application entry point
+```bash
+./deploy-ec2.sh deploy
 ```
 
-## 🎨 Design Principles
+**What it does:**
+1. Checks prerequisites (AWS CLI, Ansible, SSH key)
+2. Builds the React app locally (`npm run build`)
+3. Creates a security group allowing HTTP, SSH, and port 3000
+4. Launches an EC2 instance with Ubuntu 22.04 LTS
+5. Uses Ansible to configure the server (Node.js, nginx, PM2, firewall)
+6. Copies build files to the instance via SCP
+7. Starts the app with PM2 using ecosystem configuration
+8. Saves VM state for future management
 
-- **Responsive Design**: Works seamlessly on desktop and mobile devices
-- **Intuitive UX**: Drag-and-drop interfaces for complex interactions
-- **Real-time Feedback**: Live updates and immediate validation
-- **Professional Styling**: Clean, modern interface suitable for demos
-- **Accessibility**: Proper ARIA labels and keyboard navigation
+### Commands
 
-## 🔧 Mock Data & Logic
+```bash
+# Deploy the application
+./deploy-ec2.sh deploy
 
-The application uses sophisticated mock data including:
+# Check VM status and get connection info
+./deploy-ec2.sh status
 
-- **Teams**: Engineering, Product, Marketing, CTO with color coding
-- **Models**: Popular LLM models from OpenAI, Anthropic, Meta, etc.
-- **Policies**: Pre-configured examples showing different use cases
-- **Request Generation**: Realistic random request generation
-- **Policy Evaluation**: Complete logic for request approval/rejection
+# SSH into the VM
+./deploy-ec2.sh ssh
 
-## 🚦 Policy Evaluation Logic
+# Sync updated files to VM (after making changes)
+./deploy-ec2.sh sync
 
-The simulator evaluates requests using this logic:
+# Destroy VM and clean up all resources
+./deploy-ec2.sh destroy
+```
 
-1. **Policy Matching**: Check if request matches any policy items
-2. **Time Validation**: Verify request falls within allowed time ranges
-3. **Rejection Rules**: Apply explicit rejection policies first
-4. **Approval Rules**: Apply approval policies if no rejections
-5. **Default Deny**: Reject requests with no matching policies
+### Access
 
-## 🎪 Demo Scenarios
+After deployment:
+- **Web App**: `http://<PUBLIC_IP>` (from status command)
+- **Direct App**: `http://<PUBLIC_IP>:3000`  
+- **SSH**: `./deploy-ec2.sh ssh`
 
-The app comes with three pre-configured policies perfect for demonstrations:
+## Configuration
 
-1. **Engineering Access Policy**: Full access during business hours
-2. **Premium Model Restriction**: Limits expensive models to CTO team
-3. **Marketing Limited Access**: Restricted model access with rate limits
+Edit `deploy-ec2.sh` to customize:
 
-## 🔄 Future Enhancements
+```bash
+REGION="us-east-2"               # AWS region
+INSTANCE_TYPE="t3.medium"        # EC2 instance type
+KEY_NAME="router-team-us-east2"  # Your EC2 key pair name
+SECURITY_GROUP_NAME="maas-policy-gui-sg"
+INSTANCE_NAME="maas-policy-gui"
+```
 
-This demo application is designed to be plugged into a real system with:
+## Application Features
 
-- **Backend Integration**: Replace mock data with real API calls
-- **Authentication**: Add user authentication and role-based access
-- **Database Storage**: Persistent policy and metrics storage
-- **Advanced Analytics**: Historical trends and detailed reporting
-- **Webhook Integration**: Real-time notifications and alerts
+The MaaS Policy GUI includes:
+- **Policy Builder**: Drag-and-drop interface for creating AI model access policies
+- **Team Management**: Assign teams to different AI models
+- **Rate Limiting**: Configure token limits per time period
+- **Request Simulator**: Test policy rules with simulated requests
+- **Metrics Dashboard**: View policy enforcement statistics
+- **OpenShift UI Style**: Modern Red Hat design system
 
-## 📝 License
+## Architecture
 
-This project is part of the Kuadrant LLM Integration demos and follows the same licensing terms.
+```
+┌─────────────────┐    ┌──────────────────┐    ┌────────────────┐
+│   Your Machine  │────│   EC2 Instance   │────│   React App    │
+│                 │SCP │                  │    │                │
+│ npm run build   │────│ nginx:80 ────────│────│ serve:3000     │
+│                 │    │ PM2 Process Mgr  │    │                │
+└─────────────────┘    └──────────────────┘    └────────────────┘
+```
 
-## 🤝 Contributing
+## Cost Estimation
 
-Feel free to submit issues and enhancement requests!
+**Monthly costs (us-east-2):**
+- **t3.medium**: ~$30/month
+- **t3.small**: ~$15/month  
+- **t3.micro**: ~$8/month (free tier eligible)
+
+## Troubleshooting
+
+### Common Issues
+
+1. **SSH Key Not Found**
+   ```bash
+   # Update the key name in deploy-ec2.sh
+   KEY_NAME="your-key-name"
+   ```
+
+2. **Permission Denied**
+   ```bash
+   chmod 400 ~/.ssh/router-team-us-east2.pem
+   ```
+
+3. **Security Group Exists**
+   ```bash
+   # Clean up first
+   ./deploy-ec2.sh destroy
+   ```
+
+4. **Instance Not Accessible**
+   ```bash
+   # Check security group allows HTTP traffic
+   aws ec2 describe-security-groups --group-names maas-policy-gui-sg --region us-east-2
+   ```
+
+### Debug Commands
+
+```bash
+# SSH to instance and check services
+./deploy-ec2.sh ssh
+
+# Once connected, check services:
+pm2 status
+sudo systemctl status nginx
+pm2 logs maas-policy-gui
+curl localhost:3000
+```
+
+## Files
+
+- `deploy-ec2.sh` - Main deployment script with subcommands
+- `launch-maas-instance.yaml` - Ansible playbook for server configuration (includes embedded nginx and PM2 configs)
+- `inventory.ini` - Ansible inventory (dynamically populated)
+- `README.md` - This documentation
+- `.vm-state` - VM state file (created after deployment)
+
+## Support
+
+For issues:
+1. Check the troubleshooting section above
+2. Verify AWS credentials and permissions
+3. Ensure your key pair exists in the target region
+4. Check EC2 instance logs in AWS Console

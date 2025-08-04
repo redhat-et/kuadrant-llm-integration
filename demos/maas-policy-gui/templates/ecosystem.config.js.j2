@@ -1,0 +1,21 @@
+module.exports = {
+  apps: [{
+    name: '{{ app_name }}',
+    script: 'serve',
+    args: '-s . -l 3000',
+    cwd: '{{ app_dir }}',
+    instances: 1,
+    autorestart: true,
+    watch: false,
+    max_memory_restart: '1G',
+    env: {
+      NODE_ENV: 'production',
+      PORT: 3000
+    },
+    error_file: '{{ app_dir }}/logs/err.log',
+    out_file: '{{ app_dir }}/logs/out.log',
+    log_file: '{{ app_dir }}/logs/combined.log',
+    time: true,
+    log_date_format: 'YYYY-MM-DD HH:mm:ss Z'
+  }]
+};

@@ -1,0 +1,177 @@
+---
+- name: Deploy MaaS Policy GUI Application
+  hosts: all
+  become: yes
+  gather_facts: yes
+  vars:
+    app_name: maas-policy-gui
+    app_user: ubuntu
+    app_dir: "/home/{{ app_user }}/app"
+    node_version: "18"
+
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Upgrade system packages
+      apt:
+        upgrade: dist
+
+    - name: Install required system packages
+      apt:
+        name:
+          - wget
+          - curl
+          - git
+          - nginx
+          - ufw
+          - netcat-openbsd
+          - python3
+          - python3-pip
+          - ca-certificates
+          - gnupg
+          - lsb-release
+        state: present
+
+    - name: Configure UFW firewall rules
+      ufw:
+        rule: allow
+        port: "{{ item }}"
+        proto: tcp
+      loop:
+        - '22'    # SSH
+        - '80'    # HTTP
+        - '443'   # HTTPS
+        - '3000'  # Node.js app
+
+    - name: Enable UFW firewall
+      ufw:
+        state: enabled
+
+    - name: Add NodeSource GPG key
+      apt_key:
+        url: https://deb.nodesource.com/gpgkey/nodesource.gpg.key
+        state: present
+
+    - name: Add NodeSource repository
+      apt_repository:
+        repo: "deb https://deb.nodesource.com/node_{{ node_version }}.x jammy main"
+        state: present
+        update_cache: yes
+
+    - name: Install Node.js
+      apt:
+        name: nodejs
+        state: present
+
+    - name: Install PM2 globally
+      npm:
+        name: pm2
+        global: yes
+
+    - name: Create application directory
+      file:
+        path: "{{ app_dir }}"
+        state: directory
+        owner: "{{ app_user }}"
+        group: "{{ app_user }}"
+        mode: '0755'
+
+    - name: Install serve package globally
+      npm:
+        name: serve
+        global: yes
+
+    - name: Create nginx config for MaaS Policy GUI
+      copy:
+        dest: /etc/nginx/conf.d/maas-policy-gui.conf
+        content: |
+          server {
+              listen 80;
+              server_name _;
+
+              location / {
+                  proxy_pass http://127.0.0.1:3000;
+                  proxy_http_version 1.1;
+                  proxy_set_header Upgrade $http_upgrade;
+                  proxy_set_header Connection 'upgrade';
+                  proxy_set_header Host $host;
+                  proxy_set_header X-Real-IP $remote_addr;
+                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                  proxy_set_header X-Forwarded-Proto $scheme;
+                  proxy_cache_bypass $http_upgrade;
+                  proxy_read_timeout 86400;
+              }
+
+              location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg)$ {
+                  proxy_pass http://127.0.0.1:3000;
+                  proxy_set_header Host $host;
+                  expires 1y;
+                  add_header Cache-Control "public, immutable";
+              }
+
+              location /health {
+                  access_log off;
+                  return 200 "healthy\n";
+                  add_header Content-Type text/plain;
+              }
+
+              gzip on;
+              gzip_vary on;
+              gzip_min_length 1024;
+              gzip_comp_level 6;
+              gzip_types text/plain text/css application/json application/javascript text/xml application/xml;
+          }
+      notify: restart nginx
+
+    - name: Start and enable nginx
+      systemd:
+        name: nginx
+        state: started
+        enabled: yes
+
+    - name: Create PM2 ecosystem configuration
+      copy:
+        dest: "{{ app_dir }}/ecosystem.config.js"
+        content: |
+          module.exports = {
+            apps: [{
+              name: '{{ app_name }}',
+              script: 'serve',
+              args: '-s . -l 3000',
+              cwd: '{{ app_dir }}',
+              instances: 1,
+              autorestart: true,
+              watch: false,
+              max_memory_restart: '1G',
+              env: {
+                NODE_ENV: 'production',
+                PORT: 3000
+              },
+              error_file: '{{ app_dir }}/logs/err.log',
+              out_file: '{{ app_dir }}/logs/out.log',
+              log_file: '{{ app_dir }}/logs/combined.log',
+              time: true,
+              log_date_format: 'YYYY-MM-DD HH:mm:ss Z'
+            }]
+          };
+        owner: "{{ app_user }}"
+        group: "{{ app_user }}"
+        mode: '0644'
+
+    - name: Set proper ownership for app directory
+      file:
+        path: "{{ app_dir }}"
+        state: directory
+        owner: "{{ app_user }}"
+        group: "{{ app_user }}"
+        recurse: yes
+
+  handlers:
+    - name: restart nginx
+      systemd:
+        name: nginx
+        state: restarted
+
